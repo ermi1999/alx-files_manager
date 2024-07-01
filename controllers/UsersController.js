@@ -20,7 +20,7 @@ class UsersController {
         res.status(400).json({ error: 'Already exist' });
       } else {
         collection.insertOne({ email, password: hashedPass });
-        const _user = collection.findOne(
+        const _user = await collection.findOne(
           { email },
           { projection: { email: 1 } },
         );
