@@ -22,7 +22,7 @@ class UsersController {
         collection.insertOne({ email, password: hashedPass });
         const _user = collection.findOne(
           { email },
-          { projection: { email: 1 } }
+          { projection: { email: 1 } },
         );
         res.status(201).json({ id: _user._id, email: _user.email });
       }
