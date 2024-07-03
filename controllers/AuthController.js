@@ -13,6 +13,7 @@ class AuthController {
       const EmailAndPassword = Buffer.from(authHeader.slice(6), 'base64')
         .toString()
         .split(':');
+      console.log(EmailAndPassword);
 
       if (!EmailAndPassword) {
         res.status(401).json({ error: 'Unauthorized' });
@@ -57,17 +58,6 @@ class AuthController {
       if (!userId) {
         res.status(401).json({ error: 'Unauthorized' });
       }
-
-      const collection = await dbClient.db.collection('users');
-      if (!collection) {
-        res.status(401).json({ error: 'Unauthorized' });
-      }
-
-      const user = await collection.findOne({ _id: userId });
-      if (!user) {
-        res.status(401).json({ error: 'Unauthorized' });
-      }
-
       await redisClient.del(`auth_${token}`);
       res.status(204);
     } catch (error) {
