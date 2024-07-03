@@ -104,6 +104,107 @@ class FilesController {
       return res.status(500).send({ error: 'Server error' });
     }
   }
+
+  static async getShow(req, res) {
+    const token = req.get('X-Token');
+    if (!token) {
+      return res.status(401).send({ error: 'Unauthorized' });
+    }
+
+    try {
+      const key = `auth_${token}`;
+      const userId = await redisClient.get(key);
+      if (!userId) {
+        return res.status(401).send({ error: 'Unauthorized' });
+      }
+
+      const user = await dbClient.findUser({ _id: ObjectId(userId) });
+      if (!user) {
+        return res.status(401).send({ error: 'Unauthorized' });
+      }
+      const collection = await dbClient.db.collection('files');
+      const fileId = req.params.id || '';
+      const file = await collection.findOne({
+        _id: ObjectId(fileId),
+        userId: user._id,
+      });
+      if (!file) {
+        return res.status(404).send({ error: 'Not found' });
+      }
+      return res.status(200).send({
+        id: file._id,
+        userId: file.userId,
+        name: file.name,
+        type: file.type,
+        isPublic: file.isPublic,
+        parentId: file.parentId,
+      });
+    } catch (error) {
+      console.log(error);
+      return res.status(500).send({ error: 'Server error' });
+    }
+  }
+
+  static async getIndex(req, res) {
+    const token = req.get('X-Token');
+    if (!token) {
+      return res.status(401).send({ error: 'Unauthorized' });
+    }
+
+    try {
+      const collection = await dbClient.db.collection('files');
+      const key = `auth_${token}`;
+      const userId = await redisClient.get(key);
+      if (!userId) {
+        return res.status(401).send({ error: 'Unauthorized' });
+      }
+      const user = await dbClient.findUser({ _id: ObjectId(userId) });
+      if (!user) {
+        return res.status(401).send({ error: 'Unauthorized' });
+      }
+
+      let parentId = req.query.parentId || 0;
+      const page = req.query.page || 0;
+
+      if (parentId === '0') parentId = 0;
+      if (parentId !== 0) {
+        const folder = await collection.findOne({ _id: ObjectId(parentId) });
+
+        if (!folder || folder.type !== 'folder') {
+          return res.status(200).send([]);
+        }
+      }
+      const aggrigated = { $and: [{ parentId }] };
+      let aggrigatedData = [
+        { $match: aggrigated },
+        { $skip: page * 20 },
+        { $limit: 20 },
+      ];
+      if (parentId === 0) {
+        aggrigatedData = [{ $skip: page * 20 }, { $limit: 20 }];
+      }
+
+      const pageFiles = await collection.aggregate(aggrigatedData);
+      const files = [];
+
+      await pageFiles.forEach((file) => {
+        const fileObj = {
+          id: file._id,
+          userId: file.userId,
+          name: file.name,
+          type: file.type,
+          isPublic: file.isPublic,
+          parentId: file.parentId,
+        };
+        files.push(fileObj);
+      });
+
+      return res.status(200).send(files);
+    } catch (error) {
+      console.log(error);
+      return res.status(500).send({ error: 'Server error' });
+    }
+  }
 }
 
 export default FilesController;
