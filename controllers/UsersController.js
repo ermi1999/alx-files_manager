@@ -7,10 +7,10 @@ class UsersController {
   static async postNew(req, res) {
     const { email, password } = req.body;
     if (!email) {
-      res.status(400).json({ error: 'Missing email' });
+      return res.status(400).json({ error: 'Missing email' });
     }
     if (!password) {
-      res.status(400).json({ error: 'Missing password' });
+      return res.status(400).json({ error: 'Missing password' });
     }
     const hashedPass = sha1(password);
 
@@ -19,15 +19,14 @@ class UsersController {
       const user = await collection.findOne({ email });
 
       if (user) {
-        res.status(400).json({ error: 'Already exist' });
-      } else {
-        collection.insertOne({ email, password: hashedPass });
-        const _user = await collection.findOne({ email });
-        res.status(201).json({ id: _user._id, email: _user.email });
+        return res.status(400).json({ error: 'Already exist' });
       }
+      collection.insertOne({ email, password: hashedPass });
+      const _user = await collection.findOne({ email });
+      return res.status(201).json({ id: _user._id, email: _user.email });
     } catch (error) {
       console.log(error);
-      res.status(500).json({ error: 'Server error' });
+      return res.status(500).json({ error: 'Server error' });
     }
   }
 
@@ -53,7 +52,7 @@ class UsersController {
       return res.json({ id: userId._id, email: user.email });
     } catch (error) {
       console.log(error);
-      return res.status(500).json({ error: 'Server error' });
+      return res.status(500).json({ error: 'Sreturn erver error' });
     }
   }
 }
