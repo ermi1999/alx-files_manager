@@ -13,7 +13,6 @@ class AuthController {
       const EmailAndPassword = Buffer.from(authHeader.slice(6), 'base64')
         .toString()
         .split(':');
-      console.log(EmailAndPassword);
 
       if (!EmailAndPassword) {
         return res.status(401).json({ error: 'Unauthorized' });
@@ -59,7 +58,7 @@ class AuthController {
         return res.status(401).json({ error: 'Unauthorized' });
       }
       await redisClient.del(`auth_${token}`);
-      return res.status(204);
+      return res.status(204).send();
     } catch (error) {
       console.log(error);
       return res.status(500).json({ error: 'Server error' });
