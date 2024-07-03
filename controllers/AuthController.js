@@ -28,6 +28,10 @@ class AuthController {
         res.status(401).json({ error: 'Unauthorized' });
       }
 
+      if (password !== user.password) {
+        res.status(401).json({ error: 'Unauthorized' });
+      }
+
       const token = uuidv4();
       const key = `auth_${token}`;
 
@@ -64,7 +68,7 @@ class AuthController {
         res.status(401).json({ error: 'Unauthorized' });
       }
 
-      await redisClient.del(`auth${token}`);
+      await redisClient.del(`auth_${token}`);
       res.status(204);
     } catch (error) {
       console.log(error);
