@@ -319,7 +319,8 @@ class FilesController {
     const { isPublic, userId, type } = file;
 
     const key = `auth_${token}`;
-    const user = await redisClient.get(key);
+    let user = await redisClient.get(key);
+    user = user._id;
     if (!userId) {
       return res.status(401).send({ error: 'Unauthorized' });
     }
