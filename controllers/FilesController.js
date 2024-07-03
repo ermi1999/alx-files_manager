@@ -1,6 +1,7 @@
 import { ObjectId } from 'mongodb';
 import { v4 as uuidv4 } from 'uuid';
-import { mkdir, writeFile } from 'fs';
+import { mkdir, writeFile, readFileSync } from 'fs';
+import mime from 'mime-types';
 import dbClient from '../utils/db';
 import redisClient from '../utils/redis';
 
@@ -300,6 +301,47 @@ class FilesController {
     } catch (error) {
       console.log(error);
       return res.status(500).send({ error: 'Server error' });
+    }
+  }
+
+  static async getFile(req, res) {
+    const token = req.get('X-Token');
+    if (!token) {
+      return res.status(401).send({ error: 'Unauthorized' });
+    }
+    const collection = dbClient.db.collection('files');
+    const fileId = req.params.id || '';
+    const size = req.query.size || 0;
+
+    const file = await collection.findOne({ _id: ObjectId(fileId) });
+    if (!file) return res.status(404).send({ error: 'Not found' });
+
+    const { isPublic, userId, type } = file;
+
+    const key = `auth_${token}`;
+    const user = await redisClient.get(key);
+    if (!userId) {
+      return res.status(401).send({ error: 'Unauthorized' });
+    }
+
+    if (
+      (!isPublic && !user) || (user && userId.toString() !== user && !isPublic)
+    ) {
+      return res.status(404).send({ error: 'Not found' });
+    }
+    if (type === 'folder') {
+      return res.status(400).send({ error: "A folder doesn't have content" });
+    }
+
+    const path = size === 0 ? file.localPath : `${file.localPath}_${size}`;
+
+    try {
+      const fileData = readFileSync(path);
+      const mimeType = mime.contentType(file.name);
+      res.setHeader('Content-Type', mimeType);
+      return res.status(200).send(fileData);
+    } catch (err) {
+      return res.status(404).send({ error: 'Not found' });
     }
   }
 }
