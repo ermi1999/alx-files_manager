@@ -1,0 +1,76 @@
+import sha1 from 'sha1';
+import { v4 as uuidv4 } from 'uuid';
+import dbClient from '../utils/db';
+import redisClient from '../utils/redis';
+
+class AuthController {
+  static async getConnect(req, res) {
+    const authHeader = req.get('Authorization');
+    if (!authHeader) {
+      res.status(401).json({ error: 'Unauthorized' });
+    }
+    try {
+      const EmailAndPassword = Buffer.from(authHeader.slice(6), 'base64')
+        .toString()
+        .split(':');
+
+      if (!EmailAndPassword) {
+        res.status(401).json({ error: 'Unauthorized' });
+      }
+
+      const email = EmailAndPassword[0];
+      const password = sha1(EmailAndPassword[1]);
+
+      const collection = await dbClient.db.collection('users');
+      const user = await collection.findOne({ email, password });
+
+      if (!user) {
+        res.status(401).json({ error: 'Unauthorized' });
+      }
+
+      const token = uuidv4();
+      const key = `auth_${token}`;
+
+      await redisClient.set(key, user._id.toString(), 86400);
+
+      res.status(200).json({ token });
+    } catch (error) {
+      console.log(error);
+      res.status(500).json({ error: 'Server error' });
+    }
+  }
+
+  static async getDisconnect(req, res) {
+    try {
+      const token = req.get('X-Token');
+
+      if (!token) {
+        res.status(401).json({ error: 'Unauthorized' });
+      }
+
+      const userId = await redisClient.get(`auth_${token}`);
+
+      if (!userId) {
+        res.status(401).json({ error: 'Unauthorized' });
+      }
+
+      const collection = await dbClient.db.collection('users');
+      if (!collection) {
+        res.status(401).json({ error: 'Unauthorized' });
+      }
+
+      const user = await collection.findOne({ _id: userId });
+      if (!user) {
+        res.status(401).json({ error: 'Unauthorized' });
+      }
+
+      await redisClient.del(`auth${token}`);
+      res.status(204);
+    } catch (error) {
+      console.log(error);
+      res.status(500).json({ error: 'Server error' });
+    }
+  }
+}
+
+export default AuthController;
