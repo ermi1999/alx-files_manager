@@ -205,6 +205,103 @@ class FilesController {
       return res.status(500).send({ error: 'Server error' });
     }
   }
+
+  static async putPublish(req, res) {
+    const token = req.get('X-Token');
+    if (!token) {
+      return res.status(401).send({ error: 'Unauthorized' });
+    }
+
+    try {
+      const collection = await dbClient.db.collection('files');
+      const key = `auth_${token}`;
+      const userId = await redisClient.get(key);
+      if (!userId) {
+        return res.status(401).send({ error: 'Unauthorized' });
+      }
+
+      const user = await dbClient.findUser({ _id: ObjectId(userId) });
+      if (!user) {
+        return res.status(401).send({ error: 'Unauthorized' });
+      }
+      const fileId = req.params.id || '';
+
+      let file = await collection.findOne({
+        _id: ObjectId(fileId),
+        userId: user._id,
+      });
+      if (!file) return res.status(404).send({ error: 'Not found' });
+
+      await collection.updateOne(
+        { _id: ObjectId(fileId) },
+        { $set: { isPublic: true } },
+      );
+      file = await collection.findOne({
+        _id: ObjectId(fileId),
+        userId: user._id,
+      });
+
+      return res.status(200).send({
+        id: file._id,
+        userId: file.userId,
+        name: file.name,
+        type: file.type,
+        isPublic: file.isPublic,
+        parentId: file.parentId,
+      });
+    } catch (error) {
+      console.log(error);
+      return res.status(500).send({ error: 'Server error' });
+    }
+  }
+
+  static async putUnpublish(req, res) {
+    const token = req.get('X-Token');
+    if (!token) {
+      return res.status(401).send({ error: 'Unauthorized' });
+    }
+
+    try {
+      const collection = await dbClient.db.collection('files');
+      const key = `auth_${token}`;
+      const userId = await redisClient.get(key);
+      if (!userId) {
+        return res.status(401).send({ error: 'Unauthorized' });
+      }
+
+      const user = await dbClient.findUser({ _id: ObjectId(userId) });
+      if (!user) {
+        return res.status(401).send({ error: 'Unauthorized' });
+      }
+      const fileId = req.params.id || '';
+      let file = await collection.findOne({
+        _id: ObjectId(fileId),
+        userId: user._id,
+      });
+      if (!file) return res.status(404).send({ error: 'Not found' });
+
+      await collection.updateOne(
+        { _id: ObjectId(fileId) },
+        { $set: { isPublic: false } },
+      );
+      file = await collection.findOne({
+        _id: ObjectId(fileId),
+        userId: user._id,
+      });
+
+      return res.status(200).send({
+        id: file._id,
+        userId: file.userId,
+        name: file.name,
+        type: file.type,
+        isPublic: file.isPublic,
+        parentId: file.parentId,
+      });
+    } catch (error) {
+      console.log(error);
+      return res.status(500).send({ error: 'Server error' });
+    }
+  }
 }
 
 export default FilesController;
