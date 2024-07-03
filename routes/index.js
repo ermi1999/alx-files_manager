@@ -43,10 +43,10 @@ const routeController = (app) => {
   router.get('/files', (req, res) => {
     FilesController.getIndex(req, res);
   });
-  route.put('/files/:id/publish', (req, res) => {
+  router.put('/files/:id/publish', (req, res) => {
     FilesController.putPublish(req, res);
   });
-  route.put('/files/:id/unpublish', (req, res) => {
+  router.put('/files/:id/unpublish', (req, res) => {
     FilesController.putUnpublish(req, res);
   });
 };
